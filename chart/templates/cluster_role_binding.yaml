@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "irsa-emu.fullname" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "irsa-emu.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "irsa-emu.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}

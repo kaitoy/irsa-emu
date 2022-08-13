@@ -1,0 +1,5 @@
+*.coverprofile
+.vscode
+bin/
+
+mock/

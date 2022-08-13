@@ -1,0 +1,33 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "irsa-emu.fullname" . }}.kaitoy.xyz
+  labels:
+    {{- include "irsa-emu.labels" . | nindent 4 }}
+webhooks:
+  - name: {{ include "irsa-emu.fullname" . }}.kaitoy.xyz
+    rules:
+      - operations:
+          - CREATE
+        apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        resources:
+          - pods
+    objectSelector:
+      matchExpressions:
+        - key: irsa-emu.kaitoy.xyz/skip
+          operator: DoesNotExist
+    clientConfig:
+      service:
+        name: {{ include "irsa-emu.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /mutate
+        port: {{ .Values.service.port }}
+      caBundle: {{ .Values.tls.caBundle }}
+    sideEffects: None
+    admissionReviewVersions:
+      - v1
+    failurePolicy: Fail
+    timeoutSeconds: 10

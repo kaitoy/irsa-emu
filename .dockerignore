@@ -1,0 +1,11 @@
+*.coverprofile
+.vscode
+bin/
+mock/
+chart/
+
+.gitignore
+.dockerignore
+Dockerfile
+LICENSE
+README.md

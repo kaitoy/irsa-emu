@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "irsa-emu.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "irsa-emu.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "irsa-emu.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        irsa-emu.kaitoy.xyz/skip: "true"
+        {{- include "irsa-emu.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "irsa-emu.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --tls-cert
+            - /etc/webhook/tls/cert.pem
+            - --tls-key
+            - /etc/webhook/tls/key.pem
+            - --sidecar-image-repo
+            - {{ .Values.sidecar.image.repository }}
+            - --sidecar-image-tag
+            - {{ .Values.sidecar.image.tag | default .Chart.AppVersion }}
+            - --aws-envvars-secret
+            - {{ include "irsa-emu.fullname" . }}-aws-envvars
+            - --sts-endpoint-url
+            - {{ .Values.sidecar.stsEndpointURL | quote }}
+          volumeMounts:
+            - name: webhook-cert
+              mountPath: /etc/webhook/tls
+              readOnly: true
+          ports:
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          livenessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: 443
+          readinessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: 443
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: webhook-cert
+          secret:
+            secretName: {{ include "irsa-emu.fullname" . }}-webhook-cert
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
